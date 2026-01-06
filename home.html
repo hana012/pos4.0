@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Page - POS System</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Point of Sale System for SONIC IRAQ">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="SONIC POS">
+    <meta name="msapplication-TileColor" content="#667eea">
+    <meta name="msapplication-TileImage" content="sonic logo.png">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="sonic logo.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="sonic logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="sonic logo.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="sonic logo.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="sonic logo.png">
+    <link rel="shortcut icon" href="sonic logo.png">
+    
+    <!-- Link to Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        // Check login status on page load
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('sonic_logged_in');
+            if (isLoggedIn !== 'true') {
+                // Redirect to login page if not logged in
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Update user info if logged in
+            const username = sessionStorage.getItem('sonic_username');
+            const userRole = sessionStorage.getItem('sonic_user_role');
+            if (username) {
+                document.title = `Home Page - Welcome ${username}`;
+                document.getElementById('user-info').textContent = `Welcome, ${username} (${userRole})`;
+                
+                // Show admin-only buttons
+                if (userRole === 'admin') {
+                    document.getElementById('clear-data-button').style.display = 'flex';
+                    document.getElementById('vps-status-button').style.display = 'flex';
+                }
+            }
+        }
+        
+        // Logout function
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                sessionStorage.removeItem('sonic_logged_in');
+                sessionStorage.removeItem('sonic_username');
+                sessionStorage.removeItem('sonic_user_role');
+                sessionStorage.removeItem('sonic_login_time');
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Check login status when page loads
+        document.addEventListener('DOMContentLoaded', checkLoginStatus);
+        
+        // Backup Now function (saves to PostgreSQL database)
+        async function backupNow() {
+            let loadingMsg = null;
+            try {
+                // Show loading message
+                loadingMsg = document.createElement('div');
+                loadingMsg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:10px;box-shadow:0 4px 6px rgba(0,0,0,0.3);z-index:10000;';
+                loadingMsg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating backup...';
+                document.body.appendChild(loadingMsg);
+                
+                // Collect ALL data from ALL sections (Complete System Backup)
+                const backupData = {
+                    timestamp: new Date().toISOString(),
+                    version: '1.0',
+                    data: {
+                        // ===== CORE SHOP DATA =====
+                        sonic_shop_data: localStorage.getItem('sonic_shop_data'), // Items, customers, transactions
+                        
+                        // ===== INVOICES SECTION =====
+                        sonic_invoices: localStorage.getItem('sonic_invoices'), // All invoices
+                        sonic_invoice_counter: localStorage.getItem('sonic_invoice_counter'), // Invoice counter
+                        
+                        // ===== RETURN SALES SECTION =====
+                        sonic_returns: localStorage.getItem('sonic_returns'), // Return sales
+                        sonic_return_counter: localStorage.getItem('sonic_return_counter'), // Return counter
+                        
+                        // ===== TRANSFER SECTION =====
+                        sonic_transfers: localStorage.getItem('sonic_transfers'), // Transfer records
+                        sonic_iqd_rate: localStorage.getItem('sonic_iqd_rate'), // Transfer exchange rate
+                        
+                        // ===== EXCHANGE RATES =====
+                        sonic_iqd_per_usd: localStorage.getItem('sonic_iqd_per_usd'), // IQD per USD rate
+                        
+                        // ===== ACTIVITY & TRACKING =====
+                        sonic_activity_data: localStorage.getItem('sonic_activity_data'), // Activity logs
+                        sonic_items_data: localStorage.getItem('sonic_items_data'), // Items activity data
+                        
+                        // ===== INVENTORY SECTION =====
+                        sonic_inventory_data: localStorage.getItem('sonic_inventory_data'), // Inventory records
+                        
+                        // ===== SERVICE MANAGEMENT =====
+                        sonic_services: localStorage.getItem('sonic_services'), // Service records
+                        
+                        // ===== DEBT MANAGEMENT =====
+                        sonic_debts: localStorage.getItem('sonic_debts'), // Debt records
+                        
+                        // ===== STORES SECTION =====
+                        sonic_stores: localStorage.getItem('sonic_stores'), // Store locations
+                        sonic_store_counter: localStorage.getItem('sonic_store_counter'), // Store counter
+                        
+                        // ===== SECURITY & SETTINGS =====
+                        sonic_security_state: localStorage.getItem('sonic_security_state') // Security settings
+                    }
+                };
+                
+                // Get username for backup record
+                const username = sessionStorage.getItem('sonic_username') || 'system';
+                
+                // Try to save to database first
+                try {
+                    const response = await fetch(window.location.origin + '/api/backup.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(backupData)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        // Also save to localStorage as backup
+                        const backupKey = `sonic_backup_${Date.now()}`;
+                        localStorage.setItem(backupKey, JSON.stringify(backupData));
+                        localStorage.setItem('sonic_latest_backup', JSON.stringify(backupData));
+                        
+                        document.body.removeChild(loadingMsg);
+                        
+                        const backupTime = new Date().toLocaleString();
+                        const dataSize = result.data_size ? ` (${(result.data_size / 1024).toFixed(2)} KB)` : '';
+                        alert(`✅ Complete Backup Saved to Database!\n\nBackup ID: ${result.backup_id}\nBackup Name: ${result.backup_name}\nSize: ${dataSize}\nTime: ${backupTime}\n\n📦 Backup Includes ALL Sections:\n\n✅ Core Data:\n• Shop data (items, customers, transactions)\n• All invoices & invoice counter\n\n✅ Sales & Returns:\n• Return sales & return counter\n• Transfer records & exchange rates\n\n✅ Activity & Inventory:\n• Activity logs & items activity\n• Inventory records\n\n✅ Management:\n• Service management\n• Debt management\n• Store locations\n\n✅ Settings:\n• Exchange rates (IQD/USD)\n• Security settings\n\n💾 Data safely stored in PostgreSQL database.`);
+                        
+                        console.log('Backup saved to database:', result);
+                    } else {
+                        throw new Error(result.message || 'Failed to save to database');
+                    }
+                } catch (dbError) {
+                    // If database save fails, fallback to localStorage
+                    console.warn('Database backup failed, using localStorage fallback:', dbError);
+                    
+                    const backupKey = `sonic_backup_${Date.now()}`;
+                    localStorage.setItem(backupKey, JSON.stringify(backupData));
+                    localStorage.setItem('sonic_latest_backup', JSON.stringify(backupData));
+                    
+                    document.body.removeChild(loadingMsg);
+                    
+                    const backupTime = new Date().toLocaleString();
+                    alert(`⚠️ Database Backup Unavailable!\n\nBackup saved to local storage instead.\n\nTime: ${backupTime}\n\nNote: Database API may not be configured.\nPlease check api/backup.php configuration.\n\n📦 This backup contains ALL sections:\n• Shop data, invoices, returns\n• Transfers, activity, inventory\n• Services, debts, stores\n• Exchange rates & settings`);
+                    
+                    console.log('Backup saved to localStorage (fallback):', backupKey);
+                }
+                
+            } catch (error) {
+                console.error('Backup failed:', error);
+                if (loadingMsg && document.body.contains(loadingMsg)) {
+                    document.body.removeChild(loadingMsg);
+                }
+                alert('❌ Backup failed!\n\nError: ' + error.message + '\n\nPlease try again or use "Backup to File" instead.');
+            }
+        }
+        
+        // Backup to File function - shows format selection
+        function backupToFile() {
+            // Show format selection dialog
+            const format = prompt('Choose backup format:\n\n1 = JSON Format (Complete - Recommended for VPS)\n2 = CSV Format\n3 = Excel Format\n\nEnter 1, 2, or 3:');
+            
+            if (format === '1') {
+                // JSON Format - Complete backup
+                if (typeof exportAllDataToJSON === 'function') {
+                    exportAllDataToJSON();
+                } else {
+                    alert('JSON export function not available. Please ensure shared.js is loaded.');
+                }
+            } else if (format === '2') {
+                // CSV Format
+                exportAllDataToCSV();
+            } else if (format === '3') {
+                // Excel Format
+                exportAllDataToExcel();
+            }
+        }
+        
+        // Direct clear data function (Admin only)
+        function clearAllDataDirect() {
+            // Check if user is admin
+            const userRole = sessionStorage.getItem('sonic_user_role');
+            if (userRole !== 'admin') {
+                alert('❌ Access Denied!\n\nOnly administrators can clear all system data.');
+                return;
+            }
+            
+            if (confirm('⚠️ WARNING: This will clear ALL system data including:\n\n• All saved invoices\n• All customer data\n• All item data\n• All transaction history\n• All debt records\n\nThis action CANNOT be undone!\n\nAre you sure you want to continue?')) {
+                try {
+                    // Clear all localStorage data
+                    localStorage.removeItem('sonic_invoices');
+                    localStorage.removeItem('sonic_invoice_counter');
+                    localStorage.removeItem('sonic_shop_data');
+                    localStorage.removeItem('sonic_security_state');
+                    
+                    // Clear session storage
+                    sessionStorage.removeItem('sonic_logged_in');
+                    sessionStorage.removeItem('sonic_username');
+                    sessionStorage.removeItem('sonic_user_role');
+                    sessionStorage.removeItem('sonic_login_time');
+                    
+                    // Show success message
+                    alert('✅ All system data cleared successfully!\n\nYou will be redirected to the login page.');
+                    
+                    // Redirect to login page
+                    window.location.href = 'login.html';
+                    
+                } catch (error) {
+                    console.error('Error clearing data:', error);
+                    alert('❌ Error clearing data: ' + error.message);
+                }
+            }
+        }
+        
+        
+        // Restore from Backup function
+        function restoreFromBackup() {
+            if (typeof restoreFromBackupFile === 'function') {
+                restoreFromBackupFile();
+            } else {
+                alert('Restore function not available. Please ensure shared.js is loaded.');
+            }
+        }
+    </script>
+    
+    <script>
+        // Register Service Worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(function(err) {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 80%;
+            max-width: 1200px;
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 36px;
+            color: #333;
+        }
+        
+        .header-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: #c82333;
+        }
+        
+        .user-info {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .menu {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .menu-item {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-item i {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .menu-item:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-controls">
+            <span class="user-info" id="user-info">Welcome, User</span>
+            <button class="logout-btn" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+        
+        <header class="header">
+            <h1>Home Page</h1>
+        </header>
+        <div class="menu">
+            <div class="menu-item" onclick="window.location.href='sale.html'">
+                <i class="fas fa-shopping-cart"></i>
+                Sale
+            </div>
+            <div class="menu-item" onclick="window.location.href='debt-management.html'">
+                <i class="fas fa-money-check-alt"></i>
+                Debt Management
+            </div>
+            <div class="menu-item" onclick="window.location.href='customers.html'">
+                <i class="fas fa-users"></i>
+                Customer
+            </div>
+            <div class="menu-item" onclick="window.location.href='items.html'">
+                <i class="fas fa-cogs"></i>
+                Item
+            </div>
+            <div class="menu-item" onclick="window.location.href='dashboard.html'">
+                <i class="fas fa-file-invoice-dollar"></i>
+                Invoices Profits
+            </div>
+            <div class="menu-item" onclick="window.location.href='items-activity.html'">
+                <i class="fas fa-chart-line"></i>
+                Item Activity
+            </div>
+            <div class="menu-item" onclick="window.location.href='items-activity-total.html'">
+                <i class="fas fa-chart-bar"></i>
+                Items Activity Total
+            </div>
+            <div class="menu-item" onclick="window.location.href='items-inventory.html'">
+                <i class="fas fa-boxes"></i>
+                Items Inventory
+            </div>
+            <div class="menu-item" onclick="window.location.href='service-management.html'">
+                <i class="fas fa-tools"></i>
+                Service Management
+            </div>
+  
+         
+            <div class="menu-item" onclick="window.location.href='return-sale.html'">
+                <i class="fas fa-undo"></i>
+                Return Sale
+            </div>
+            <div class="menu-item" onclick="window.location.href='transfer.html'">
+                <i class="fas fa-exchange-alt"></i>
+                Transfer
+            </div>
+            <div class="menu-item" onclick="backupNow()">
+                <i class="fas fa-cloud-upload-alt"></i>
+                Backup Now
+            </div>
+            <div class="menu-item" onclick="backupToFile()">
+                <i class="fas fa-file-export"></i>
+                Backup to File
+            </div>
+            <div class="menu-item" onclick="restoreFromBackup()">
+                <i class="fas fa-file-import"></i>
+                Restore from Backup
+            </div>
+            <div class="menu-item" id="vps-status-button" onclick="window.location.href='vps-status.html'" style="background-color: #667eea; display: none;">
+                <i class="fas fa-server"></i>
+                VPS & Database Status
+            </div>
+            <div class="menu-item" id="clear-data-button" onclick="clearAllDataDirect()" style="background-color: #dc2626; display: none;">
+                <i class="fas fa-trash-alt"></i>
+                Clear All Data
+            </div>
+        
+        </div>
+    </div>
+    
+    <!-- Include shared.js for export functions -->
+    <script src="shared.js"></script>
+</body>
+</html>

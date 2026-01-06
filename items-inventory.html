@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Items Inventory - SONIC POS</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="sonic logo.png">
+    <meta name="theme-color" content="#667eea">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="sonic logo.png" alt="SONIC Logo" class="logo">
+                    <h1>Items Inventory</h1>
+                </div>
+                <div class="user-controls">
+                    <span id="current-user" class="user-info">Welcome, User</span>
+                    <button onclick="logout()" class="btn btn-secondary">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <a href="home.html" class="nav-tab">Home</a>
+            <a href="sale.html" class="nav-tab">POS</a>
+            <a href="return-sale.html" class="nav-tab">Return Sale</a>
+            <a href="transfer.html" class="nav-tab">Transfer</a>
+            <a href="items.html" class="nav-tab">Items</a>
+            <a href="customers.html" class="nav-tab">Customers</a>
+            <a href="dashboard.html" class="nav-tab">Dashboard</a>
+            <a href="items-activity.html" class="nav-tab">Item Activity</a>
+            <a href="items-inventory.html" class="nav-tab active">Inventory</a>
+            <a href="items-activity-total.html" class="nav-tab">Activity Total</a>
+            <a href="debt-management.html" class="nav-tab">Debt Management</a>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Loading Indicator -->
+            <div id="loading-indicator" style="text-align: center; padding: 40px; display: none;">
+                <div style="font-size: 18px; color: #666;">Loading Inventory Data...</div>
+            </div>
+            
+            <!-- Error Message -->
+            <div id="error-message" style="display: none; background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                <strong>Error:</strong> <span id="error-text"></span>
+            </div>
+
+            <!-- Stock Adjustment Form -->
+            <div class="form-section" style="margin-bottom: 30px;">
+                <h2>Stock Adjustment</h2>
+                <form id="stock-adjustment-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="adjust-item-name">Item Name:</label>
+                            <div class="search-container">
+                                <input type="text" id="adjust-item-name" placeholder="Search and select item..." required>
+                                <div id="item-search-results" class="search-results"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="adjust-quantity">Quantity Change:</label>
+                            <input type="number" id="adjust-quantity" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="adjust-reason">Reason:</label>
+                            <select id="adjust-reason" required>
+                                <option value="sale">Sale</option>
+                                <option value="return">Return</option>
+                                <option value="damage">Damage</option>
+                                <option value="theft">Theft</option>
+                                <option value="adjustment">Manual Adjustment</option>
+                                <option value="restock">Restock</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Update Stock</button>
+                        <button type="button" onclick="clearAdjustmentForm()" class="btn btn-secondary">Clear</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-group">
+                    <label for="category-filter">Category:</label>
+                    <select id="category-filter" onchange="filterInventory()">
+                        <option value="all">All Categories</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="stock-filter">Stock Status:</label>
+                    <select id="stock-filter" onchange="filterInventory()">
+                        <option value="all">All Items</option>
+                        <option value="in-stock">In Stock</option>
+                        <option value="low-stock">Low Stock</option>
+                        <option value="out-of-stock">Out of Stock</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="search-input">
+                        <span style="background: #6b7280; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; margin-right: 6px;">Item:</span>
+                        Search Item Name
+                    </label>
+                    <div style="position: relative; display: inline-block;">
+                        <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #6b7280; pointer-events: none; z-index: 2;"></i>
+                        <input type="text" id="search-input" placeholder="Enter item name..." oninput="handleItemSearchInventory()" onfocus="showItemSuggestionsInventory()" onblur="hideItemSuggestionsInventory()" style="padding: 8px 8px 8px 35px; border: 1px solid #ddd; border-radius: 4px; width: 200px;">
+                        <div id="item-suggestions-inventory" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; margin-top: 2px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <!-- Item suggestions will appear here -->
+                        </div>
+                    </div>
+                </div>
+                <button onclick="refreshInventory()" class="btn btn-primary">Refresh</button>
+                <button onclick="syncInventoryWithItems()" class="btn btn-primary">Sync with Items</button>
+                <button onclick="forceSyncAllItems()" class="btn btn-info">Force Sync All Items</button>
+                <button onclick="exportInventory()" class="btn btn-secondary">Export</button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="stats-section">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Items</h3>
+                        <div class="stat-value" id="total-items">0</div>
+                        <div class="card-change" id="items-change">+0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>In Stock</h3>
+                        <div class="stat-value" id="in-stock-items">0</div>
+                        <div class="card-change" id="stock-change">+0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Low Stock</h3>
+                        <div class="stat-value" id="low-stock-items">0</div>
+                        <div class="card-change" id="low-stock-change">+0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Out of Stock</h3>
+                        <div class="stat-value" id="out-of-stock-items">0</div>
+                        <div class="card-change" id="out-stock-change">+0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory Table -->
+            <div class="table-section">
+                <h2>Current Inventory</h2>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>SKU</th>
+                                <th>Item Name</th>
+                                <th>Category</th>
+                                <th>Current Stock</th>
+                                <th>Min Stock</th>
+                                <th>Max Stock</th>
+                                <th>Status</th>
+                                <th>Last Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-tbody">
+                            <!-- Inventory data will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // Simple error handling and debugging
+        window.addEventListener('error', function(e) {
+            console.error('JavaScript Error:', e.error);
+            const errorDiv = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            if (errorDiv && errorText) {
+                errorText.textContent = e.error.message || 'Unknown error occurred';
+                errorDiv.style.display = 'block';
+            }
+        });
+        
+        // Show loading indicator
+        document.addEventListener('DOMContentLoaded', function() {
+            const loading = document.getElementById('loading-indicator');
+            if (loading) {
+                loading.style.display = 'block';
+            }
+        });
+    </script>
+    
+    <script src="shared.js"></script>
+    <script src="items-inventory.js"></script>
+    
+    <script>
+        // Hide loading indicator after scripts load
+        window.addEventListener('load', function() {
+            const loading = document.getElementById('loading-indicator');
+            if (loading) {
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self';">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Point of Sale System for SONIC IRAQ">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="SONIC POS">
+    <meta name="msapplication-TileColor" content="#667eea">
+    <meta name="msapplication-TileImage" content="sonic logo.png"> <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="sonic logo.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="sonic logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="sonic logo.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="sonic logo.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="sonic logo.png">
+    <link rel="shortcut icon" href="sonic logo.png">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        .user-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .user-info {
+            color: #666;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .invoice-search {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .invoice-search input {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            width: 120px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .invoice-search input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+        }
+        
+        .btn-search {
+            padding: 5px 8px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .btn-search:hover {
+            background: #3730a3;
+        }
+        
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: #c82333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <div class="invoice-container">
+        <!-- Header Section -->
+        <div class="header-section">
+            <div class="company-info">
+                <div class="logo-icon sonic-logo">
+                    <img src="sonic logo.png" alt="SONIC Logo">
+                </div>
+                
+                <div class="company-details">
+                    <h1>SONIC</h1>
+                    <p class="company-subtitle">For General Trading & Home Appliances</p>
+                    <p class="company-contact">Mob: 0750 4305020 - 0750 4775345 - 0750 849 2002</p>
+                    <div class="company-branches">
+                        <p class="branch-info">Branch (1st): Erbil, Koya Road</p>
+                        <p class="branch-info">Branch (2nd): Erbil, Nishtiman Bazzar</p>
+                        <p class="branch-info">Branch (3rd): Swrchi Bazzar</p>
+                    </div>
+                   
+                    <div class="user-controls">
+                        <span class="user-info" id="user-info">Welcome, User</span>
+                        <button class="logout-btn" onclick="logout()" title="Logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="invoice-meta">
+                    <div class="qr-code-section">
+                        <div class="qr-code">
+                            <img src="qrcode.jpg" alt="QR Code" style="width: 100px; height: 100px;">
+                        </div>
+                    </div>
+                    <div class="invoice-navigation">
+                        <button class="btn-nav" onclick="previousInvoice()" id="prev-btn" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <div class="invoice-search">
+                            <input type="text" id="invoice-search-input" placeholder="Search by invoice #" onkeypress="handleInvoiceSearch(event)" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; width: 120px;">
+                            <button class="btn-search" onclick="searchInvoice()" style="padding: 5px 8px; background: #4f46e5; color: white; border: none; border-radius: 4px; margin-left: 5px; cursor: pointer;">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <span class="invoice-counter" id="invoice-counter" onclick="showInvoiceList()" style="cursor: pointer;" title="Click to see all invoices">1 / 1</span>
+                        <button class="btn-nav" onclick="nextInvoice()" id="next-btn" disabled>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <a href="home.html" class="nav-tab">Home</a>
+            <a href="sale.html" class="nav-tab active">POS</a>
+            <a href="return-sale.html" class="nav-tab">Return Sale</a>
+            <a href="transfer.html" class="nav-tab">Transfer</a>
+            <a href="items.html" class="nav-tab">Items</a>
+            <a href="customers.html" class="nav-tab">Customers</a>
+            <a href="dashboard.html" class="nav-tab">Dashboard</a>
+            <a href="items-activity.html" class="nav-tab">Item Activity</a>
+            <a href="items-inventory.html" class="nav-tab">Inventory</a>
+            <a href="items-activity-total.html" class="nav-tab">Activity Total</a>
+            <a href="debt-management.html" class="nav-tab">Debt Management</a>
+        </nav>
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 5px 15px; margin: 5px 0;">
+            <div class="invoice-date" id="invoice-date"></div>
+            <div class="invoice-number">Invoice #<span id="invoice-number">INV-001</span></div>
+            <div class="invoice-time" id="invoice-time"></div>
+        </div>
+
+        <!-- Customer Info Display (for print/save) -->
+        <div class="customer-info-display print-only">
+            <div class="customer-info-compact">
+                <div class="customer-details-group">
+                    <div><strong>Customer:</strong> <span id="display-customer-account">-</span></div>
+                    <div><strong>Location:</strong> <span id="display-customer-location">-</span></div>
+                    <div><strong>Phone:</strong> <span id="display-customer-phone">-</span></div>
+                    <div><strong>Description:</strong> <span id="display-description">-</span></div>
+                </div>
+                <div class="payment-details-group">
+                    <div><strong>Payment:</strong> <span id="display-payment-method">-</span></div>
+                    <div><strong>Currency:</strong> <span id="display-currency">-</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Section -->
+        <div class="form-section">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="customer-account">
+                        <i class="fas fa-user"></i> Customer Account 🔍
+                    </label>
+                    <div style="display: flex; gap: 10px; position: relative;">
+                        <input type="text" id="customer-account" placeholder="Enter customer name or select from list" list="customer-list">
+                        <datalist id="customer-list">
+                            <!-- Customer options will be populated here -->
+                        </datalist>
+                        <div id="customer-suggestions" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; max-height: 200px; overflow-y: auto;">
+                            <!-- Customer suggestions will be populated here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="description">
+                        <i class="fas fa-file-text"></i> Description
+                    </label>
+                    <input type="text" id="description" placeholder="Enter description or notes">
+                </div>
+                <div class="form-group">
+                    <label for="currency">
+                        <i class="fas fa-dollar-sign"></i> Currency
+                    </label>
+                    <select id="currency">
+                        <option value="USD">USD ($)</option>
+                        <option value="IQD">IQD (د.ع)</option>
+                    </select>
+                    <div id="currency-conversion-note" style="font-size: 12px; color: #666; margin-top: 6px;">
+                        <span id="currency-conversion-prefix">Current: USD ($). </span>
+                        1 USD = 
+                        <input id="iqd-rate-input" type="number" min="1" step="1" value="1400" 
+                               style="width: 90px; padding: 2px 6px; font-size: 12px; border: 1px solid #ccc; border-radius: 4px; margin: 0 4px;">
+                        IQD
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="payment-method">
+                        <i class="fas fa-credit-card"></i> Payment Method
+                    </label>
+                    <select id="payment-method" onchange="togglePartialPayment()">
+                        <option value="on-account">On Account</option>
+                        <option value="cash">Cash Payment</option>
+                        <option value="partial">Partial Payment</option>
+                        <option value="card">Credit/Debit Card</option>
+                        <option value="bank-transfer">Bank Transfer</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions Section -->
+        <div class="actions-section">
+            <div class="actions-grid">
+                <button class="btn btn-primary" onclick="addRow()">
+                    <i class="fas fa-plus"></i> Add New Row
+                </button>
+                <button class="btn btn-danger" onclick="removeLastRow()">
+                    <i class="fas fa-minus"></i> Remove Last Row
+                </button>
+                <button id="delete-selected-btn" class="btn btn-warning" onclick="deleteSelectedRow()" disabled>
+                    <i class="fas fa-trash"></i> Delete Selected Row
+                </button>
+            </div>
+        </div>
+
+        <!-- Table Section -->
+        <div class="table-section">
+            <div class="table-header">
+                <h2 class="table-title">Invoice Items</h2>
+            
+            </div>
+            
+            <table class="invoice-table" id="invoice-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th style="width: 120px;">Barcode</th>
+                        <th style="width: 350px;">Item Name</th>
+                        <th style="width: 80px;">Qty</th>
+                        <th style="width: 100px;">Price</th>
+                        <th style="width: 100px;">Total</th>
+                        <th style="width: 150px;">Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="invoice-tbody">
+                    <tr id="row-1" onclick="selectRow(1)">
+                        <td class="row-number">1</td>
+                        <td><input type="text" id="barcode-1" placeholder="Scan barcode" onclick="event.stopPropagation()"></td>
+                        <td>
+                            <div style="display: flex; gap: 4px; align-items: center; position: relative;">
+                                <input type="text" id="item-name-1" placeholder="Enter item name" onclick="event.stopPropagation()" autocomplete="off" style="flex: 1;">
+                                <button type="button" onclick="openItemQuickSearch(1)" class="quick-search-btn" title="Quick Search">
+                                    🔍
+                                </button>
+                            </div>
+                        </td>
+                        <td><input type="number" id="quantity-1" value="" min="0" step="1" onclick="event.stopPropagation()"></td>
+                        <td><input type="number" id="retail-price-1" value="" min="0" step="0.01" onclick="event.stopPropagation()"></td>
+                        <td><input type="number" id="total-1" value="" disabled onclick="event.stopPropagation()"></td>
+                        <td><input type="text" id="note-1" placeholder="Add note" onclick="event.stopPropagation()"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Totals Section -->
+        <div class="totals-section">
+            <div class="totals-grid">
+                <div class="total-item">
+                    <div class="total-label">Total Quantity</div>
+                    <div class="total-value" id="total-quantity">0</div>
+                </div>
+                <div class="total-item">
+                    <div class="total-label">Subtotal</div>
+                    <div class="total-value"><span id="currency-symbol">$</span><span id="subtotal">0.00</span></div>
+                </div>
+                <div class="total-item" id="partial-payment-group" style="display: none;">
+                    <div class="total-label">Amount Paid</div>
+                    <input type="number" id="paid-amount" class="total-input" min="0" step="0.01" placeholder="0.00" onchange="calculateRemainingBalance()">
+                </div>
+                <div class="total-item">
+                    <div class="total-label">Discount Type</div>
+                    <select id="discount-type" class="total-input" style="width: 100px;font-size: 12px ;">
+                        <option value="amount">Amount</option>
+                        <option value="percentage">%</option>
+                    </select>
+                </div>
+                <div class="total-item">
+                    <div class="total-label">Discount</div>
+                    <input type="number" id="discount" class="total-input" value="0.00" min="0" step="0.01">
+                </div>
+                <div class="total-item final-total">
+                    <div class="total-label">Final Total</div>
+                    <div class="total-value"><span id="final-currency-symbol">$</span><span id="total-sum">0.00</span></div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Signature Section (Print Only) -->
+        <div class="signature-section print-only" style="display: none;">
+            <div class="signature-container">
+                <div class="signature-box signature-customer">
+                    <div class="signature-line"></div>
+                    <div class="signature-label">Customer Signature</div>
+                </div>
+                <div class="signature-box signature-seller">
+                    <div class="signature-line"></div>
+                    <div class="signature-label">Seller Signature</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Section -->
+        <div class="footer-section">
+            
+            <div class="footer-actions">
+                <button class="btn btn-save btn-footer" onclick="saveInvoice()">
+                    <i class="fas fa-save"></i> Save Invoice
+                </button>
+                <button class="btn btn-print btn-footer" onclick="printInvoice()">
+                    <i class="fas fa-print"></i> Print Invoice
+                </button>
+                <button class="btn btn-new btn-footer" onclick="newInvoice()">
+                    <i class="fas fa-plus"></i> New
+                </button>
+                <button class="btn btn-cancel btn-footer" onclick="cancelInvoice()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+    <script>
+        // Check login status on page load
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('sonic_logged_in');
+            if (isLoggedIn !== 'true') {
+                // Redirect to login page if not logged in
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Update user info if logged in
+            const username = sessionStorage.getItem('sonic_username');
+            if (username) {
+                document.getElementById('user-info').textContent = `Welcome, ${username}`;
+            }
+        }
+        
+        // Logout function
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                sessionStorage.removeItem('sonic_logged_in');
+                sessionStorage.removeItem('sonic_username');
+                sessionStorage.removeItem('sonic_login_time');
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Check login status when page loads
+        document.addEventListener('DOMContentLoaded', checkLoginStatus);
+    </script>
+    
+    <script src="security.js"></script>
+    <script src="loading.js"></script>
+    <script src="shared.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debt Management - SONIC POS</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    
+    <script>
+        // Check login status on page load
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('sonic_logged_in');
+            if (isLoggedIn !== 'true') {
+                window.location.href = 'login.html';
+                return;
+            }
+        }
+        
+        // Logout function
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                sessionStorage.removeItem('sonic_logged_in');
+                sessionStorage.removeItem('sonic_username');
+                sessionStorage.removeItem('sonic_user_role');
+                sessionStorage.removeItem('sonic_login_time');
+                window.location.href = 'login.html';
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', checkLoginStatus);
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+
+        .card h2 {
+            color: #1f2937;
+            font-size: 24px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(107, 114, 128, 0.3);
+        }
+
+        .balance-display {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .balance-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .balance-item:last-child {
+            border-bottom: none;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .balance-label {
+            color: #6b7280;
+        }
+
+        .balance-value {
+            font-weight: 600;
+        }
+
+        .balance-positive {
+            color: #10b981;
+        }
+
+        .balance-negative {
+            color: #ef4444;
+        }
+
+        .transactions-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            transition: background-color 0.2s ease;
+        }
+
+        .transaction-item:hover {
+            background-color: #f8fafc;
+        }
+
+        .transaction-item:last-child {
+            border-bottom: none;
+        }
+
+        .transaction-info {
+            flex: 1;
+        }
+
+        .transaction-type {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .transaction-date {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .transaction-amount {
+            font-weight: 600;
+        }
+
+        .amount-debt {
+            color: #ef4444;
+        }
+
+        .amount-payment {
+            color: #10b981;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: #10b981;
+        }
+
+        .notification.error {
+            background: #ef4444;
+        }
+
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="sonic logo.png" alt="SONIC Logo" class="logo">
+                    <h1>Debt Management</h1>
+                </div>
+                <div class="user-controls">
+                    <span id="current-user" class="user-info">Welcome, User</span>
+                    <button onclick="logout()" class="btn btn-secondary">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <a href="home.html" class="nav-tab">Home</a>
+            <a href="sale.html" class="nav-tab">POS</a>
+            <a href="return-sale.html" class="nav-tab">Return Sale</a>
+            <a href="transfer.html" class="nav-tab">Transfer</a>
+            <a href="items.html" class="nav-tab">Items</a>
+            <a href="customers.html" class="nav-tab">Customers</a>
+            <a href="dashboard.html" class="nav-tab">Dashboard</a>
+            <a href="items-activity.html" class="nav-tab">Item Activity</a>
+            <a href="items-inventory.html" class="nav-tab">Inventory</a>
+            <a href="items-activity-total.html" class="nav-tab">Activity Total</a>
+            <a href="debt-management.html" class="nav-tab active">Debt Management</a>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Debt Customers Overview Section -->
+            <div class="table-section" style="margin-bottom: 30px;">
+                <h2>Debt Customers Overview</h2>
+                
+                <!-- Date Filter -->
+                <div class="filter-section" style="margin-bottom: 20px;">
+                    <div class="filter-group">
+                        <label for="debt-start-date">
+                            <span style="background: #059669; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; margin-right: 6px;">Date:</span>
+                            Start Date
+                        </label>
+                        <div style="position: relative; display: inline-block;">
+                            <i class="fas fa-calendar-alt" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #6b7280; pointer-events: none; z-index: 2;"></i>
+                            <input type="date" id="debt-start-date" onchange="filterDebtCustomers()" style="padding: 8px 8px 8px 35px; border: 1px solid #ddd; border-radius: 4px; width: 150px;">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label for="debt-end-date">End Date</label>
+                        <div style="position: relative; display: inline-block;">
+                            <i class="fas fa-calendar-alt" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #6b7280; pointer-events: none; z-index: 2;"></i>
+                            <input type="date" id="debt-end-date" onchange="filterDebtCustomers()" style="padding: 8px 8px 8px 35px; border: 1px solid #ddd; border-radius: 4px; width: 150px;">
+                        </div>
+                    </div>
+                    <button onclick="setDebtDateRange('today')" class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;">Today</button>
+                    <button onclick="setDebtDateRange('month')" class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;">This Month</button>
+                    <button onclick="setDebtDateRange('all')" class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px;">All Time</button>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="stats-section" style="margin-bottom: 20px;">
+                    <div class="stats-grid">
+                        <div class="stat-card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+                            <h3>Total Debt</h3>
+                            <div class="stat-value" id="total-debt-amount" style="color: white;">$0.00</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+                            <h3>Customers with Debt</h3>
+                            <div class="stat-value" id="debt-customers-count" style="color: white;">0</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                            <h3>Total Paid</h3>
+                            <div class="stat-value" id="total-paid-amount" style="color: white;">$0.00</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                            <h3>Average Debt</h3>
+                            <div class="stat-value" id="average-debt-amount" style="color: white;">$0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Debt Customers Table -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Customer Name</th>
+                                <th>Phone</th>
+                                <th>Total Debt</th>
+                                <th>Total Paid</th>
+                                <th>Current Balance</th>
+                                <th>Credit Limit</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="debt-customers-tbody">
+                            <!-- Debt customers will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Payment Form and Transaction History -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px;">
+                <!-- Payment Form -->
+                <div class="form-section">
+                    <h2><i class="fas fa-credit-card"></i> Record Payment</h2>
+                
+                <div class="form-group">
+                    <label for="customer-select">Select Customer:</label>
+                    <select id="customer-select">
+                        <option value="">Choose a customer...</option>
+                    </select>
+                </div>
+
+                <div class="balance-display" id="balance-display" style="display: none;">
+                    <div class="balance-item">
+                        <span class="balance-label">Total Paid:</span>
+                        <span class="balance-value" id="total-paid">$0.00</span>
+                    </div>
+                    <div class="balance-item">
+                        <span class="balance-label">Remaining Balance:</span>
+                        <span class="balance-value" id="current-balance">$0.00</span>
+                    </div>
+                    <div class="balance-item">
+                        <span class="balance-label">Credit Limit:</span>
+                        <span class="balance-value" id="credit-limit">$0.00</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="payment-amount">Payment Amount:</label>
+                    <input type="number" id="payment-amount" step="0.01" min="0" placeholder="Enter payment amount">
+                </div>
+
+                <div class="form-group">
+                    <label for="payment-description">Description (Optional):</label>
+                    <input type="text" id="payment-description" placeholder="Payment description">
+                </div>
+
+                <button class="btn btn-primary" onclick="recordPayment()">
+                    <i class="fas fa-check"></i> Record Payment
+                </button>
+                
+                <button class="btn btn-secondary" onclick="refreshCustomerData()" style="margin-left: 10px;">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+
+            <!-- Transaction History -->
+                <div class="table-section">
+                <h2><i class="fas fa-history"></i> Transaction History</h2>
+                
+                <div class="transactions-list" id="transactions-list">
+                    <p style="text-align: center; color: #6b7280; padding: 20px;">
+                        Select a customer to view transaction history
+                    </p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="shared.js"></script>
+    <script>
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            loadCustomers();
+            initializeDebtDateFilters();
+            filterDebtCustomers();
+        });
+
+        // Initialize debt date filters
+        function initializeDebtDateFilters() {
+            const today = new Date();
+            const startDate = document.getElementById('debt-start-date');
+            const endDate = document.getElementById('debt-end-date');
+            
+            if (startDate && !startDate.value) {
+                // Set to beginning of current month
+                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                startDate.value = firstDay.toISOString().split('T')[0];
+            }
+            if (endDate && !endDate.value) {
+                endDate.value = today.toISOString().split('T')[0];
+            }
+        }
+
+        // Set debt date range
+        function setDebtDateRange(range) {
+            const now = new Date();
+            const startDate = document.getElementById('debt-start-date');
+            const endDate = document.getElementById('debt-end-date');
+            
+            if (!startDate || !endDate) return;
+            
+            let start, end;
+            
+            switch (range) {
+                case 'today':
+                    start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    break;
+                case 'month':
+                    start = new Date(now.getFullYear(), now.getMonth(), 1);
+                    end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                    break;
+                case 'all':
+                    start = new Date(0);
+                    end = new Date();
+                    break;
+                default:
+                    return;
+            }
+            
+            if (range !== 'all') {
+                startDate.value = start.toISOString().split('T')[0];
+                endDate.value = end.toISOString().split('T')[0];
+            } else {
+                startDate.value = '';
+                endDate.value = '';
+            }
+            
+            filterDebtCustomers();
+        }
+
+        // Filter and display debt customers
+        function filterDebtCustomers() {
+            const startDate = document.getElementById('debt-start-date')?.value;
+            const endDate = document.getElementById('debt-end-date')?.value;
+            const customers = getAllCustomers();
+            const tbody = document.getElementById('debt-customers-tbody');
+            
+            if (!tbody) {
+                console.error('Debt customers tbody not found');
+                return;
+            }
+            
+            console.log('Filtering debt customers. Total customers:', customers.length);
+            
+            let totalDebt = 0;
+            let totalPaid = 0;
+            let customersWithDebt = 0;
+            let debtCustomers = [];
+            
+            customers.forEach(customer => {
+                // Get customer balance
+                const balance = getCustomerBalance(customer.id);
+                if (!balance) {
+                    console.log('No balance for customer:', customer.name);
+                    return;
+                }
+                
+                console.log('Customer:', customer.name, 'Balance:', balance);
+                
+                // Use customer's actual balance values
+                let customerDebt = balance.totalDebt || 0;
+                let customerPaid = balance.totalPaid || 0;
+                let customerBalance = balance.currentBalance || 0;
+                
+                // If date filter is applied, recalculate from transactions in that range
+                if (startDate || endDate) {
+                    // Get transactions within date range
+                    const transactions = getCustomerDebtTransactions(customer.id);
+                    const filteredTransactions = transactions.filter(trans => {
+                        const transDate = new Date(trans.date);
+                        const start = startDate ? new Date(startDate) : new Date(0);
+                        const end = endDate ? new Date(endDate + 'T23:59:59') : new Date();
+                        return transDate >= start && transDate <= end;
+                    });
+                    
+                    // Recalculate from filtered transactions
+                    customerDebt = 0;
+                    customerPaid = 0;
+                    filteredTransactions.forEach(trans => {
+                        if (trans.type === 'debt') {
+                            customerDebt += trans.amount || 0;
+                        } else if (trans.type === 'payment') {
+                            customerPaid += trans.amount || 0;
+                        }
+                    });
+                    customerBalance = customerDebt - customerPaid;
+                }
+                
+                // Show customer if they have any debt-related activity
+                // Include customers with current balance, total debt, or total paid
+                if (customerBalance !== 0 || customerDebt > 0 || customerPaid > 0 || balance.totalDebt > 0 || balance.totalPaid > 0) {
+                    totalDebt += customerDebt;
+                    totalPaid += customerPaid;
+                    if (customerBalance > 0) customersWithDebt++;
+                    
+                    debtCustomers.push({
+                        customer: customer,
+                        balance: {
+                            totalDebt: customerDebt,
+                            totalPaid: customerPaid,
+                            currentBalance: customerBalance,
+                            creditLimit: balance.creditLimit || 0
+                        }
+                    });
+                }
+            });
+            
+            console.log('Debt customers found:', debtCustomers.length);
+            
+            // Sort by current balance (highest first)
+            debtCustomers.sort((a, b) => b.balance.currentBalance - a.balance.currentBalance);
+            
+            // Update statistics
+            const totalDebtEl = document.getElementById('total-debt-amount');
+            const customersCountEl = document.getElementById('debt-customers-count');
+            const totalPaidEl = document.getElementById('total-paid-amount');
+            const averageDebtEl = document.getElementById('average-debt-amount');
+            
+            if (totalDebtEl) totalDebtEl.textContent = formatCurrency(totalDebt);
+            if (customersCountEl) customersCountEl.textContent = customersWithDebt;
+            if (totalPaidEl) totalPaidEl.textContent = formatCurrency(totalPaid);
+            if (averageDebtEl) {
+                averageDebtEl.textContent = customersWithDebt > 0 ? formatCurrency(totalDebt / customersWithDebt) : formatCurrency(0);
+            }
+            
+            // Update table
+            if (debtCustomers.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">
+                            <i class="fas fa-check-circle" style="font-size: 48px; margin-bottom: 15px; display: block; color: #10b981;"></i>
+                            No customers with debt found${startDate || endDate ? ' for the selected date range' : ''}
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = debtCustomers.map(item => {
+                const { customer, balance } = item;
+                const statusClass = balance.currentBalance > 0 ? 'balance-negative' : 'balance-positive';
+                const statusText = balance.currentBalance > 0 ? 'Has Debt' : 'Paid';
+                const statusColor = balance.currentBalance > 0 ? '#ef4444' : '#10b981';
+                
+                return `
+                    <tr style="border-bottom: 1px solid #e5e7eb; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                        <td style="padding: 12px; font-weight: 600; color: #1f2937;">${customer.name}</td>
+                        <td style="padding: 12px; color: #6b7280;">${customer.phone || 'N/A'}</td>
+                        <td style="padding: 12px; text-align: right; font-weight: 600; color: #ef4444;">${formatCurrency(balance.totalDebt)}</td>
+                        <td style="padding: 12px; text-align: right; font-weight: 600; color: #10b981;">${formatCurrency(balance.totalPaid)}</td>
+                        <td style="padding: 12px; text-align: right; font-weight: 700; color: ${balance.currentBalance > 0 ? '#ef4444' : '#10b981'};">${formatCurrency(balance.currentBalance)}</td>
+                        <td style="padding: 12px; text-align: right; color: #6b7280;">${formatCurrency(balance.creditLimit)}</td>
+                        <td style="padding: 12px; text-align: center;">
+                            <span style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                                ${statusText}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function loadCustomers() {
+            const customerSelect = document.getElementById('customer-select');
+            const customers = getAllCustomers();
+            
+            customerSelect.innerHTML = '<option value="">Choose a customer...</option>';
+            
+            customers.forEach(customer => {
+                const option = document.createElement('option');
+                option.value = customer.id;
+                option.textContent = `${customer.name} (${customer.phone})`;
+                customerSelect.appendChild(option);
+            });
+
+            // Add change event listener
+            customerSelect.addEventListener('change', function() {
+                if (this.value) {
+                    loadCustomerBalance(this.value);
+                    loadCustomerTransactions(this.value);
+                } else {
+                    document.getElementById('balance-display').style.display = 'none';
+                    document.getElementById('transactions-list').innerHTML = 
+                        '<p style="text-align: center; color: #6b7280; padding: 20px;">Select a customer to view transaction history</p>';
+                }
+            });
+        }
+
+        function loadCustomerBalance(customerId) {
+            const balance = getCustomerBalance(parseInt(customerId));
+            if (balance) {
+                document.getElementById('current-balance').textContent = formatCurrency(balance.currentBalance);
+                document.getElementById('current-balance').className = 
+                    balance.currentBalance > 0 ? 'balance-value balance-negative' : 'balance-value balance-positive';
+                
+                document.getElementById('total-paid').textContent = formatCurrency(balance.totalPaid);
+                document.getElementById('credit-limit').textContent = formatCurrency(balance.creditLimit);
+                
+                document.getElementById('balance-display').style.display = 'block';
+            }
+        }
+
+        function loadCustomerTransactions(customerId) {
+            const transactions = getCustomerDebtTransactions(parseInt(customerId));
+            const transactionsList = document.getElementById('transactions-list');
+            
+            if (transactions.length === 0) {
+                transactionsList.innerHTML = 
+                    '<p style="text-align: center; color: #6b7280; padding: 20px;">No transactions found</p>';
+                return;
+            }
+
+            // Calculate running totals for each transaction
+            let runningTotalDebt = 0;
+            let runningTotalPaid = 0;
+            
+            transactionsList.innerHTML = transactions.map(transaction => {
+                if (transaction.type === 'debt') {
+                    runningTotalDebt += transaction.amount;
+                } else if (transaction.type === 'payment') {
+                    runningTotalPaid += transaction.amount;
+                }
+                
+                const currentBalance = runningTotalDebt - runningTotalPaid;
+                
+                return `
+                    <div class="transaction-item">
+                        <div class="transaction-info">
+                            <div class="transaction-type">${transaction.type === 'debt' ? 'Debt Added' : 'Payment Received'}</div>
+                            <div class="transaction-date">${formatDate(transaction.date)}</div>
+                            <div style="font-size: 12px; color: #6b7280;">${transaction.description}</div>
+                            <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">
+                                Math: ${runningTotalDebt === 0 ? 'Total Debt' : formatCurrency(runningTotalDebt)} - ${formatCurrency(runningTotalPaid)} = <span style="color: ${currentBalance >= 0 ? '#10b981' : '#ef4444'}; font-weight: 600;">${formatCurrency(currentBalance)}</span>
+                            </div>
+                        </div>
+                        <div class="transaction-amount" style="color: ${transaction.type === 'debt' ? '#ef4444' : '#10b981'}; font-weight: 600;">
+                            ${transaction.type === 'debt' ? '+' : '-'}${formatCurrency(transaction.amount)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function recordPayment() {
+            const customerId = parseInt(document.getElementById('customer-select').value);
+            const amount = parseFloat(document.getElementById('payment-amount').value);
+            const description = document.getElementById('payment-description').value;
+
+            console.log('recordPayment called with:', { customerId, amount, description });
+
+            if (!customerId) {
+                showNotification('Please select a customer', 'error');
+                return;
+            }
+
+            if (!amount || amount <= 0) {
+                showNotification('Please enter a valid payment amount', 'error');
+                return;
+            }
+
+            // Get current balance before payment
+            const currentBalance = getCustomerBalance(customerId);
+            console.log('Current balance before payment:', currentBalance);
+            const oldBalance = currentBalance ? currentBalance.currentBalance : 0;
+
+            const result = addCustomerPayment(customerId, amount, description);
+            console.log('Payment result:', result);
+            
+            if (result) {
+                // Show detailed success message
+                let message = `Payment of ${formatCurrency(amount)} recorded successfully!`;
+                if (result.paymentApplied > 0) {
+                    message += `\nDebt reduced by ${formatCurrency(result.paymentApplied)}`;
+                }
+                if (result.creditAmount > 0) {
+                    message += `\nCredit of ${formatCurrency(result.creditAmount)} added`;
+                }
+                
+                showNotification(message, 'success');
+                
+                // Clear form
+                document.getElementById('payment-amount').value = '';
+                document.getElementById('payment-description').value = '';
+                
+                // Update display immediately without refresh
+                updateCustomerBalanceDisplay(customerId, result);
+                loadCustomerTransactions(customerId);
+                
+                // Add visual feedback for balance change
+                animateBalanceChange(oldBalance, result.remainingDebt);
+                
+            } else {
+                showNotification('Error recording payment', 'error');
+            }
+        }
+
+        function updateCustomerBalanceDisplay(customerId, paymentResult) {
+            const balance = getCustomerBalance(parseInt(customerId));
+            if (balance) {
+                // Update values with animation
+                const currentBalanceElement = document.getElementById('current-balance');
+                const totalPaidElement = document.getElementById('total-paid');
+                
+                // Animate the balance changes
+                animateValue(currentBalanceElement, balance.currentBalance);
+                animateValue(totalPaidElement, balance.totalPaid);
+                
+                // Update colors based on balance
+                currentBalanceElement.className = 
+                    balance.currentBalance > 0 ? 'balance-value balance-negative' : 'balance-value balance-positive';
+                
+                // Update credit limit
+                document.getElementById('credit-limit').textContent = formatCurrency(balance.creditLimit);
+            }
+        }
+
+        function animateBalanceChange(oldBalance, newBalance) {
+            const balanceElement = document.getElementById('current-balance');
+            if (balanceElement) {
+                // Add a temporary class for animation
+                balanceElement.style.transition = 'all 0.5s ease';
+                balanceElement.style.transform = 'scale(1.1)';
+                balanceElement.style.color = '#10b981';
+                
+                setTimeout(() => {
+                    balanceElement.style.transform = 'scale(1)';
+                    balanceElement.style.color = '';
+                }, 500);
+            }
+        }
+
+        function animateValue(element, targetValue) {
+            const startValue = parseFloat(element.textContent.replace(/[^0-9.-]+/g, '')) || 0;
+            const duration = 1000; // 1 second
+            const startTime = performance.now();
+            
+            function updateValue(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Easing function for smooth animation
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                const currentValue = startValue + (targetValue - startValue) * easeOut;
+                
+                element.textContent = formatCurrency(currentValue);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(updateValue);
+                }
+            }
+            
+            requestAnimationFrame(updateValue);
+        }
+
+        function refreshCustomerData() {
+            const customerId = document.getElementById('customer-select').value;
+            if (customerId) {
+                // Reload data from localStorage
+                loadData();
+                
+                // Refresh the display
+                loadCustomerBalance(parseInt(customerId));
+                loadCustomerTransactions(parseInt(customerId));
+                
+                showNotification('Customer data refreshed!', 'success');
+            } else {
+                showNotification('Please select a customer first', 'error');
+            }
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => notification.classList.add('show'), 100);
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

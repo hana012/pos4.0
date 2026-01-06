@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Item Activity - SONIC POS</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="sonic logo.png">
+    <meta name="theme-color" content="#667eea">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="sonic logo.png" alt="SONIC Logo" class="logo">
+                    <h1>Item Activity</h1>
+                </div>
+                <div class="user-controls">
+                    <span id="current-user" class="user-info">Welcome, User</span>
+                    <button onclick="logout()" class="btn btn-secondary">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <a href="home.html" class="nav-tab">Home</a>
+            <a href="sale.html" class="nav-tab">POS</a>
+            <a href="return-sale.html" class="nav-tab">Return Sale</a>
+            <a href="transfer.html" class="nav-tab">Transfer</a>
+            <a href="items.html" class="nav-tab">Items</a>
+            <a href="customers.html" class="nav-tab">Customers</a>
+            <a href="dashboard.html" class="nav-tab">Dashboard</a>
+            <a href="items-activity.html" class="nav-tab active">Item Activity</a>
+            <a href="items-inventory.html" class="nav-tab">Inventory</a>
+            <a href="items-activity-total.html" class="nav-tab">Activity Total</a>
+            <a href="debt-management.html" class="nav-tab">Debt Management</a>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-group">
+                    <label for="activity-type">Activity Type:</label>
+                    <select id="activity-type" onchange="filterActivities()">
+                        <option value="all">All Activities</option>
+                        <option value="sale">Sales</option>
+                        <option value="return">Returns</option>
+                        <option value="adjustment">Adjustments</option>
+                        <option value="transfer">Transfers</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="item-filter">
+                        <span style="background: #6b7280; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; margin-right: 6px;">Item:</span>
+                        Search Item Name
+                    </label>
+                    <div style="position: relative; display: inline-block;">
+                        <i class="fas fa-box" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #6b7280; pointer-events: none; z-index: 2;"></i>
+                        <input type="text" id="item-filter-input" placeholder="Enter item name..." oninput="handleItemSearch()" onfocus="showItemSuggestions()" onblur="hideItemSuggestions()" style="padding: 8px 8px 8px 35px; border: 1px solid #ddd; border-radius: 4px; width: 200px;">
+                        <div id="item-suggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; margin-top: 2px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <!-- Item suggestions will appear here -->
+                        </div>
+                    </div>
+                    <select id="item-filter" onchange="filterActivities()" style="display: none;">
+                        <option value="all">All Items</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="customer-filter">
+                        <span style="background: #4f46e5; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; margin-right: 6px;">Customer:</span>
+                        Search Customer Name
+                    </label>
+                    <div style="position: relative; display: inline-block;">
+                        <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #6b7280; pointer-events: none; z-index: 2;"></i>
+                        <input type="text" id="customer-filter" placeholder="Enter customer name..." oninput="handleCustomerSearch()" onfocus="showCustomerSuggestions()" onblur="hideCustomerSuggestions()" style="padding: 8px 8px 8px 35px; border: 1px solid #ddd; border-radius: 4px; width: 200px;">
+                        <div id="customer-suggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; margin-top: 2px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <!-- Customer suggestions will appear here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label for="date-from">From Date:</label>
+                    <input type="date" id="date-from" onchange="filterActivities()">
+                </div>
+                <div class="filter-group">
+                    <label for="date-to">To Date:</label>
+                    <input type="date" id="date-to" onchange="filterActivities()">
+                </div>
+                <button onclick="clearFilters()" class="btn btn-secondary">Clear Filters</button>
+                <button onclick="exportActivityLog()" class="btn btn-primary">Export Log</button>
+            </div>
+
+            <!-- Activity Statistics -->
+            <div class="stats-section">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Activities</h3>
+                        <div class="stat-value" id="total-activities">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Sales Count</h3>
+                        <div class="stat-value" id="sales-count">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Returns Count</h3>
+                        <div class="stat-value" id="returns-count">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Adjustments Count</h3>
+                        <div class="stat-value" id="adjustments-count">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Purchase Summary -->
+            <div class="table-section" id="customer-summary-section" style="display: none;">
+                <h2>Customer Purchase Summary by Item</h2>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Item Name</th>
+                                <th>Customer</th>
+                                <th>Total Quantity</th>
+                                <th>Total Amount</th>
+                                <th>Transactions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customer-summary-tbody">
+                            <!-- Customer summary will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Activity Log Table -->
+            <div class="table-section">
+                <h2>Activity Log</h2>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Type</th>
+                                <th>Item Name</th>
+                                <th>Customer</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activity-log-tbody">
+                            <!-- Activity log data will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="shared.js"></script>
+    <script src="items-activity.js"></script>
+</body>
+</html>
