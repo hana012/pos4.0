@@ -1186,7 +1186,7 @@ div:has(> .invoice-time) .invoice-time,
     }
     
     .branch-info {
-        font-size: 13px !important;
+        font-size: 10px !important;
         font-weight: 400 !important;
         color: #6b7280 !important;
         margin-bottom: 1px !important;
